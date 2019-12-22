@@ -1,6 +1,10 @@
 A simple project to test deploying a trained models using Azure Functions.
 
-This README serves as a quick guide on how to create a deployable image (for reference only). 
+The model is bears.pkl - an 87MB file. See the notebook in the [panda-or-not](https://github.com/arnts/panda-or-not) repository for how it is trained.
+
+The Dockerfile means the entire thing can be deployed to Azure Functions (serverless compute).
+
+This rest of this README serves as a quick guide / reference for how to create a deployable image and run it on Azure 
 
 ## Local Setup 
 
@@ -93,3 +97,36 @@ $ docker push <DOCKER_HUB_ID>/panda-or-not
 
 ## Azure Setup
 
+#### Create Storage Account
+
+```bash
+az storage account create --name deeplearningprotostorage --location "West Europe" --resource-group dsvmfastai --sku Standard_LRS
+```
+
+#### Create a Linux App Service Plan
+
+```bash
+az appservice plan create --name deeplearningprotoservice --resource-group dsvmfastai --sku B1 --is-linux
+```
+
+#### Create the App & Deploy the Docker image from Docker Hub
+
+```bash
+az functionapp create --resource-group dsvmfastai --name pandaornot --storage-account  deeplearningprotostorage --plan deeplearningprotoservice --deployment-container-image-name arnts/panda-or-not
+```
+
+#### Configure the function app
+
+```bash
+storageConnectionString=$(az storage account show-connection-string --resource-group dsvmfastai --name deeplearningprotostorage --query connectionString --output tsv) 
+```
+
+```bash
+az functionapp config appsettings set --name pandaornot --resource-group dsvmfastai --settings AzureWebJobsDashboard=$storageConnectionString AzureWebJobsStorage=$storageConnectionString
+```
+
+#### Run your Azure Function
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"url": "https://media.pri.org/s3fs-public/styles/story_main/public/images/2019/11/2019-11-19-beibeipanda.jpg"}' https://pandaornot.azurewebsites.net/api/panda-or-not
+```
