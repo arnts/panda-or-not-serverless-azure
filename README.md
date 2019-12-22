@@ -97,36 +97,49 @@ $ docker push <DOCKER_HUB_ID>/panda-or-not
 
 ## Azure Setup
 
+The following assumes you have a resource group named dsvmfastai.
+
 #### Create Storage Account
 
 ```bash
-az storage account create --name deeplearningprotostorage --location "West Europe" --resource-group dsvmfastai --sku Standard_LRS
+$ az storage account create --name deeplearningprotostorage --location "West Europe" --resource-group dsvmfastai --sku Standard_LRS
 ```
 
 #### Create a Linux App Service Plan
 
 ```bash
-az appservice plan create --name deeplearningprotoservice --resource-group dsvmfastai --sku B1 --is-linux
+$ az appservice plan create --name deeplearningprotoservice --resource-group dsvmfastai --sku B1 --is-linux
 ```
 
 #### Create the App & Deploy the Docker image from Docker Hub
 
 ```bash
-az functionapp create --resource-group dsvmfastai --name pandaornot --storage-account  deeplearningprotostorage --plan deeplearningprotoservice --deployment-container-image-name arnts/panda-or-not
+$ az functionapp create --resource-group dsvmfastai --name pandaornot --storage-account  deeplearningprotostorage --plan deeplearningprotoservice --deployment-container-image-name arnts/panda-or-not
 ```
 
 #### Configure the function app
 
 ```bash
-storageConnectionString=$(az storage account show-connection-string --resource-group dsvmfastai --name deeplearningprotostorage --query connectionString --output tsv) 
+$ storageConnectionString=$(az storage account show-connection-string --resource-group dsvmfastai --name deeplearningprotostorage --query connectionString --output tsv) 
 ```
 
 ```bash
-az functionapp config appsettings set --name pandaornot --resource-group dsvmfastai --settings AzureWebJobsDashboard=$storageConnectionString AzureWebJobsStorage=$storageConnectionString
+$ az functionapp config appsettings set --name pandaornot --resource-group dsvmfastai --settings AzureWebJobsDashboard=$storageConnectionString AzureWebJobsStorage=$storageConnectionString
 ```
 
 #### Run your Azure Function
+After the previous command, it can take 15-20 minutes for the app to deploy on Azure.
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"url": "https://media.pri.org/s3fs-public/styles/story_main/public/images/2019/11/2019-11-19-beibeipanda.jpg"}' https://pandaornot.azurewebsites.net/api/panda-or-not
+$ az functionapp list --resource-group dsvmfastai
 ```
+Validate the remote service
+
+```bash
+$ curl -X POST -H "Content-Type: application/json" -d '{"url": "https://media.pri.org/s3fs-public/styles/story_main/public/images/2019/11/2019-11-19-beibeipanda.jpg"}' https://pandaornot.azurewebsites.net/api/panda-or-not
+```
+
+Output should be
+
+> request_json['url']: https://media.pri.org/s3fs-public/styles/story_main/public/images/2019/11/2019-11-19-beibeipanda.jpg, pred_class: panda_bear
+
